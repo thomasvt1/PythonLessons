@@ -1,11 +1,21 @@
 from random import randint
-#from datetime import datetime
 from pyglet.window import key
-from pyglet import clock
+#from pyglet import clock
 import pyglet
 
 # Show FPS
 fps = pyglet.clock.ClockDisplay()
+
+class Collider:
+    def __init__(self, spr1, spr2):
+        self.spr1 = spr1
+        self.spr2 = spr2
+
+    def sprite_collide(self):
+        spr1 = self.spr1
+        spr2 = self.spr2
+
+        return (spr1.x - spr2.x) ** 2 + (spr1.y - spr2.y) ** 2 < (spr1.width / 2 + spr2.width / 2) ** 2
 
 
 class Bullet:
@@ -43,7 +53,7 @@ class Zombie:
     def __init__(self, random):
         animation = pyglet.resource.animation('resources/policeman.gif')
         self.sprite = pyglet.sprite.Sprite(animation)
-        self.sprite.scale = .5
+        self.sprite.scale = .3
 
         if random is True:
             self.sprite.x = randint(50, 600)
@@ -87,12 +97,14 @@ class Window(pyglet.window.Window):
         self.background = Background()
 
     # You need the dt argument there to prevent errors,
-    # it does nothing as far as I know.
+    # it does nothing as far as I know. Just a bit of counting up!
     def update(self, dt):
-        self.lastshot += dt
+        self.lastshot += dt  # Only allow shooting every .x seconds
+
+        # Make sure that walking with an angle is the same speed. We're a retro game duhh
         steps = 150
-        if len(self.pressed_keys) > 2:
-            steps = steps / 2
+        if self.pressedmovekeys() > 1:
+            steps = steps / 1.5
         print(steps)
         steps *= dt
 
@@ -127,8 +139,22 @@ class Window(pyglet.window.Window):
             b.update()
         pass
 
+    # Return the amount of move keys pressed
+    def pressedmovekeys(self):
+        keys = 0
+        if key.LEFT in self.pressed_keys:
+            keys += 1
+        if key.RIGHT in self.pressed_keys:
+            keys += 1
+        if key.DOWN in self.pressed_keys:
+            keys += 1
+        if key.UP in self.pressed_keys:
+            keys += 1
+        return keys
+
+
     def on_draw(self):
-        pyglet.clock.tick()  # Make sure you tick the clock!
+        pyglet.clock.tick()  # Make sure you tick o'l the clock!
         self.clear()
         self.background.draw()
         fps.draw()
