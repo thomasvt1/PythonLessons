@@ -4,6 +4,7 @@
       <w>collider</w>
       <w>lastshot</w>
       <w>lastspawn</w>
+      <w>maxfps</w>
       <w>spawner</w>
       <w>spawntime</w>
     </words>

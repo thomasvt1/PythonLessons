@@ -1,5 +1,6 @@
 from random import randint
 from pyglet.window import key
+from time import sleep
 import pyglet
 
 # Show FPS
@@ -25,7 +26,7 @@ class Spawner:
 
         if self.lastspawn > self.spawntime:
             print("Spawned! @", self.spawntime)
-            zombie = Zombie(self.width, 0)
+            zombie = Zombie(20, self.width, 0)
             zombie.getsprite().y = randint(0, self.height - zombie.getsprite().height)
 
             self.zombies.insert(len(self.zombies), zombie)
@@ -60,8 +61,8 @@ class Bullet:
     def getx(self) -> pyglet.sprite.Sprite:
         return self.sprite.x
 
-    def update(self):
-        self.sprite.x += 2
+    def update(self, dt):
+        self.sprite.x += 300 * dt
 
 
 class Background:
@@ -73,23 +74,22 @@ class Background:
 
 
 class Zombie:
-    def __init__(self, x, y):
+    def __init__(self, speed, x, y):
         animation = pyglet.resource.animation('resources/zombie1.gif')
         self.sprite = pyglet.sprite.Sprite(animation)
-        self.sprite.scale = .3
+        self.sprite.scale = .4
 
         self.sprite.x = x
         self.sprite.y = y
 
+        self.speed = speed
         self.lives = 100
 
     def draw(self):
         self.sprite.draw()
 
     def update(self, dt):
-        speed = 50
-
-        self.sprite.x -= speed * dt
+        self.sprite.x -= self.speed * dt
 
     def getsprite(self):
         return self.sprite
@@ -120,7 +120,8 @@ class Window(pyglet.window.Window):
     def __init__(self):
         super(Window, self).__init__(vsync=False)
         pyglet.clock.schedule(self.update)
-        pyglet.clock.set_fps_limit(60)
+        self.maxfps = 60
+        pyglet.clock.set_fps_limit(self.maxfps)
 
         self.set_caption("Zombie Mania")
 
@@ -133,12 +134,17 @@ class Window(pyglet.window.Window):
         self.zombies = []
         self.mymary = Mary(self.height)
         self.background = Background()
+        self.paused = False
 
         self.spawner = Spawner(self.zombies, self.height, self.width)
 
     # You need the dt argument there to prevent errors,
     # it does nothing as far as I know. Just a bit of counting up!
     def update(self, dt):
+        if self.paused:
+            sleep(.1) # Why waste CPU time on a game that is paused?
+            return
+
         self.lastshot += dt  # Only allow shooting every .x seconds
         marry = self.mymary.getsprite()
 
@@ -158,7 +164,7 @@ class Window(pyglet.window.Window):
         for b in list(self.bullets):
             if b.getx() > self.width:
                 self.bullets.remove(b)
-            b.update()
+            b.update(dt)
 
             for z in list(self.zombies):
                 if Collider.is_proj_colliding(self, b.getsprite(), z.getsprite()):
@@ -219,7 +225,10 @@ class Window(pyglet.window.Window):
         self.score_label.text = "Kills: %s" % (self.kills)
         self.score_label.draw()
 
-        #self.drawborder(self.zombie.getsprite())
+        if self.paused:
+            paused = pyglet.text.Label(bold=True, font_size= 20, text="PAUSED", y=self.height/2)
+            paused.x = self.width/2 - paused.content_width/2
+            paused.draw()
 
         for b in self.bullets:
             b.draw()
@@ -263,6 +272,14 @@ class Window(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         if symbol in self.pressed_keys:
             return
+
+        if symbol is key.P:
+            self.paused = not self.paused
+            if self.paused:
+                pyglet.clock.set_fps_limit(20)
+            else:
+                pyglet.clock.set_fps_limit(self.maxfps)
+
         self.pressed_keys.append(symbol)
 
     def on_key_release(self, symbol, modifiers):
