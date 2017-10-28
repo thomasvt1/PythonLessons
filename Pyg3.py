@@ -1,17 +1,41 @@
 from random import randint
 from pyglet.window import key
-#from pyglet import clock
 import pyglet
 
 # Show FPS
 fps = pyglet.clock.ClockDisplay()
 
+
 class Spawner:
-    def __init__(self, zombies):
+    def __init__(self, zombies, height, width):
         self.zombies = zombies
+        self.height = height
+        self.width = width
+        self.spawned = 0
+        self.spawntime = 0
+        self.lastspawn = 0
+        self.reset()
+
+    def reset(self):
+        self.spawntime = 5
+        self.lastspawn = 0
+
+    def update(self, dt):
+        self.lastspawn += dt
+
+        if self.lastspawn > self.spawntime:
+            print("Spawned! @", self.spawntime)
+            zombie = Zombie(self.width, 0)
+            zombie.getsprite().y = randint(0, self.height - zombie.getsprite().height)
+
+            self.zombies.insert(len(self.zombies), zombie)
+            if self.spawntime > 1:
+                self.spawntime -= .2
+            self.lastspawn = 0
+
 
 class Collider:
-    def is_colliding(self, prj, target):
+    def is_proj_colliding(self, prj, target):
         tx1 = target.x
         tx2 = target.x + target.width
         ty1 = target.y
@@ -39,9 +63,6 @@ class Bullet:
     def update(self):
         self.sprite.x += 2
 
-    def spawn(self):
-        print("TODO: Spawn")
-
 
 class Background:
     def __init__(self):
@@ -52,29 +73,39 @@ class Background:
 
 
 class Zombie:
-    def __init__(self, random):
+    def __init__(self, x, y):
         animation = pyglet.resource.animation('resources/zombie1.gif')
         self.sprite = pyglet.sprite.Sprite(animation)
         self.sprite.scale = .3
 
-        if random is True:
-            self.sprite.x = randint(200, 500)
-            self.sprite.y = randint(50, 300)
-        # marryList.insert(len(marryList), sprite)
+        self.sprite.x = x
+        self.sprite.y = y
+
+        self.lives = 100
 
     def draw(self):
         self.sprite.draw()
 
+    def update(self, dt):
+        speed = 50
+
+        self.sprite.x -= speed * dt
+
     def getsprite(self):
         return self.sprite
 
+    def shot(self):
+        self.lives -= randint(40, 70)
+        if self.lives < 0:
+            return True
+        return False
+
 
 class Mary:
-    def __init__(self, random):
+    def __init__(self, height):
         self.sprite = pyglet.sprite.Sprite(pyglet.image.load('resources/mary.png'))
-        if random is True:
-            self.sprite.x = randint(50, 600)
-            self.sprite.y = randint(50, 500)
+        self.sprite.x = 150
+        self.sprite.y = randint(0, height)
         # marryList.insert(len(marryList), sprite)
 
     def draw(self):
@@ -91,13 +122,19 @@ class Window(pyglet.window.Window):
         pyglet.clock.schedule(self.update)
         pyglet.clock.set_fps_limit(60)
 
+        self.set_caption("Zombie Mania")
+
+        self.score_label = pyglet.text.Label(text="Kills: 0", x=10, y= self.height - 20)
+
+        self.kills = 0
         self.lastshot = 0
         self.pressed_keys = []
         self.bullets = []
         self.zombies = []
-        self.mymary = Mary(True)
-        self.zombie = Zombie(True)
+        self.mymary = Mary(self.height)
         self.background = Background()
+
+        self.spawner = Spawner(self.zombies, self.height, self.width)
 
     # You need the dt argument there to prevent errors,
     # it does nothing as far as I know. Just a bit of counting up!
@@ -108,19 +145,28 @@ class Window(pyglet.window.Window):
         self.move_marry(marry, dt)
         self.keep_marry_in_screen(marry)
 
+        self.spawner.update(dt)
+
         if key.SPACE in self.pressed_keys:
-            if self.lastshot > .5:
+            if self.lastshot > .3:
                 self.bullets.insert(len(self.bullets), Bullet(marry.x + 40, marry.y + 30))
                 self.lastshot = 0
+
+        for z in self.zombies:
+            z.update(dt)
 
         for b in list(self.bullets):
             if b.getx() > self.width:
                 self.bullets.remove(b)
             b.update()
 
-            if Collider.is_colliding(self, b.getsprite(), self.zombie.getsprite()):
-                print("Collide!")
-                self.bullets.remove(b)
+            for z in list(self.zombies):
+                if Collider.is_proj_colliding(self, b.getsprite(), z.getsprite()):
+                    if z.shot():
+                        self.zombies.remove(z)
+                        self.kills += 1
+                    self.bullets.remove(b)
+
         pass
 
     def move_marry(self, marry, dt):
@@ -129,7 +175,6 @@ class Window(pyglet.window.Window):
         if self.pressedmovekeys() > 1:
             steps = steps / 1.5
         steps *= dt
-
 
         if key.LEFT in self.pressed_keys:
             marry.x -= steps
@@ -168,10 +213,11 @@ class Window(pyglet.window.Window):
         pyglet.clock.tick()  # Make sure you tick o'l the clock!
         self.clear()
         self.background.draw()
-        fps.draw()
         self.mymary.draw()
         self.mymary.getsprite()
-        self.zombie.draw()
+
+        self.score_label.text = "Kills: %s" % (self.kills)
+        self.score_label.draw()
 
         #self.drawborder(self.zombie.getsprite())
 
@@ -179,6 +225,8 @@ class Window(pyglet.window.Window):
             b.draw()
         for z in self.zombies:
             z.draw()
+
+        fps.draw()
 
     def drawborder(self, spr1):
         melon = pyglet.image.load('resources/melon.png')
