@@ -7,6 +7,35 @@ import pyglet
 fps = pyglet.clock.ClockDisplay()
 
 
+class Lives:
+    def __init__(self, height, width):
+        self.lives = 3
+
+        self.image = pyglet.image.load('resources/heart.jpg')
+        self.sprites = []
+
+        for i in range(0, 3):
+            sprite = pyglet.sprite.Sprite(self.image)
+            sprite.scale = .05
+            sprite.y = height - sprite.height - 5
+            sprite.x = (width - sprite.width - 5) - i * (sprite.width + 3)
+            self.sprites.insert(i, sprite)
+
+    def draw(self):
+        for i in range(0, self.lives):
+            self.sprites[i].draw()
+
+    def remove_live(self):
+        self.lives -= 1
+
+    def get_lives(self):
+        return self.lives
+
+    def is_dead(self):
+        print(self.lives)
+        return self.lives < 1
+
+
 class Spawner:
     def __init__(self, zombies, height, width):
         self.zombies = zombies
@@ -44,7 +73,7 @@ class Spawner:
 
             if self.next_giant:
                 speed /= 2
-                health *= 2
+                health *= 4
 
             zombie = Zombie(speed, health, self.next_giant, self.width, 0)
             zombie.getsprite().y = randint(0, self.height - zombie.getsprite().height)
@@ -59,16 +88,19 @@ class Spawner:
 
 
 class Collider:
-    def __init__(self):
-        return
-
-    def is_proj_colliding(self, prj, target):
+    @staticmethod
+    def is_bullet_colliding(prj, target):
         tx1 = target.x
         tx2 = target.x + target.width
         ty1 = target.y
         ty2 = target.y + target.height
 
         return tx1 < prj.x < tx2 and ty1 < prj.y < ty2
+
+
+def is_obj_colliding(spr1, spr2):
+    # Thank you stackoverflow for this magic function!
+    return (spr1.x - spr2.x) ** 2 + (spr1.y - spr2.y) ** 2 < (spr1.width / 2 + spr2.width / 2) ** 2
 
 
 class Bullet:
@@ -136,7 +168,6 @@ class Mary:
         self.sprite = pyglet.sprite.Sprite(pyglet.image.load('resources/mary.png'))
         self.sprite.x = 150
         self.sprite.y = randint(0, height)
-        # marryList.insert(len(marryList), sprite)
 
     def draw(self):
         self.sprite.draw()
@@ -173,9 +204,12 @@ class Window(pyglet.window.Window):
         self.background = Background()
         self.paused = False
 
+        # Live(s) manager
+        self.lives = Lives(self.height, self.width)
+
         # This block is for messages like: 'The boss is incoming', 'Good work' etc..
         self.message_timeout = 0
-        self.message_text = pyglet.text.Label(bold=True, font_size=20, text="PAUSED", y=self.height / 2)
+        self.message_text = pyglet.text.Label(bold=True, font_size=20, text="INSERT TEXT", y=self.height / 2)
 
         # Spawner is the sprite generator
         self.spawner = Spawner(self.zombies, self.height, self.width)
@@ -195,6 +229,13 @@ class Window(pyglet.window.Window):
 
         self.spawner.update(dt)  # Let's tick the spawner
 
+        self.message_timeout -= dt
+
+        # WIP - Mary & Zombie colliding test
+        for z in self.zombies:
+            if is_obj_colliding(z.getsprite(), self.mymary.getsprite()):
+                self.reset()
+
         if key.SPACE in self.pressed_keys:  # It looks like the player would like to shoot
             if self.lastshot > .3:  # The gun ain't some kind of laser
                 self.bullets.insert(len(self.bullets), Bullet(marry.x + 40, marry.y + 30))  # Let's actually shoot!
@@ -209,7 +250,7 @@ class Window(pyglet.window.Window):
             b.update(dt)  # Move the bullets passing the dt
 
             for z in list(self.zombies):  # Loop trough the zombies
-                if Collider().is_proj_colliding(b.getsprite(), z.getsprite()):
+                if Collider().is_bullet_colliding(b.getsprite(), z.getsprite()):
                     if z.shot():  # Returns true if the zombie has been killed
                         self.zombies.remove(z)  # Zombie has been killed let's remote it.
                         self.kills += 1  # Let's give the player a point!
@@ -226,6 +267,15 @@ class Window(pyglet.window.Window):
     def draw_message(self):
         if self.message_timeout < 0:
             return
+
+    def reset(self):
+        self.bullets = []
+        self.lives.remove_live()
+
+        for z in self.zombies:
+            self.zombies.remove(z)
+
+        self.spawner.reset()
 
     def move_marry(self, marry, dt):
         # Make sure that walking with an angle is the same speed. We're a retro game duhh
@@ -280,11 +330,18 @@ class Window(pyglet.window.Window):
         if self.paused:
             self.paused_text.draw()
 
+        if self.lives.is_dead():
+            dead = pyglet.text.Label(x=10, y=self.height - 20)
+            dead = pyglet.text.Label(bold=True, font_size=20, text="YOU HAVE DIED", y=self.height / 2)
+            dead.x = (self.width / 2) - (self.paused_text.content_width / 2)
+            dead.draw()
+
         for b in self.bullets:
             b.draw()
         for z in self.zombies:
             z.draw()
 
+        self.lives.draw()
         fps.draw()
 
     def draw_border(self, spr1):
@@ -323,6 +380,9 @@ class Window(pyglet.window.Window):
         if symbol in self.pressed_keys:
             return
 
+        if symbol is key.H:
+            self.lives.remove_live()
+
         if symbol is key.P:
             self.paused = not self.paused
             if self.paused:
@@ -330,7 +390,7 @@ class Window(pyglet.window.Window):
             else:
                 pyglet.clock.set_fps_limit(self.maxfps)
 
-        if key.J and key.K in self.pressed_keys:
+        if key.J in self.pressed_keys:
             if key.I is symbol:
                 self.spawner.insanity_mode()
 
