@@ -270,9 +270,9 @@ class Window(pyglet.window.Window):
         self.message_text.x = self.width / 2 - self.message_text.content_width / 2
 
     def draw_message(self):
-        if self.message_timeout < 0:
-            return
-        self.message_text.draw()
+        if self.message_timeout < 0:  # If the timeout is less than zero
+            return  # Then just return and don't go further.
+        self.message_text.draw()  # Else just render the text.
 
     def reset(self):
         self.zombies = []
