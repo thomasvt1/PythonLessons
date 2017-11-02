@@ -223,6 +223,7 @@ class Window(pyglet.window.Window):
             return  # Make sure the rest of the update doesn't get run
 
         self.lastshot += dt  # Only allow shooting every .x seconds
+        self.message_timeout -= dt # Make sure we count down the seconds for the message.
         marry = self.mymary.getsprite()  # A bit easier than calling self.mymarry.getsprite the whole time.
 
         self.move_marry(marry, dt)  # A bit of marry moving
