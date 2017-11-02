@@ -32,7 +32,6 @@ class Lives:
         return self.lives
 
     def is_dead(self):
-        print(self.lives)
         return self.lives < 1
 
 
@@ -269,11 +268,11 @@ class Window(pyglet.window.Window):
             return
 
     def reset(self):
+        self.zombies = []
         self.bullets = []
         self.lives.remove_live()
 
-        for z in self.zombies:
-            self.zombies.remove(z)
+        self.spawner = Spawner(self.zombies, self.height, self.width)
 
         self.spawner.reset()
 
@@ -331,9 +330,8 @@ class Window(pyglet.window.Window):
             self.paused_text.draw()
 
         if self.lives.is_dead():
-            dead = pyglet.text.Label(x=10, y=self.height - 20)
             dead = pyglet.text.Label(bold=True, font_size=20, text="YOU HAVE DIED", y=self.height / 2)
-            dead.x = (self.width / 2) - (self.paused_text.content_width / 2)
+            dead.x = (self.width / 2) - (dead.content_width / 2)
             dead.draw()
 
         for b in self.bullets:
