@@ -44,7 +44,7 @@ class Spawner:
 
             if self.next_giant:
                 speed /= 2
-                health *= 2
+                health *= 3
 
             zombie = Zombie(speed, health, self.next_giant, self.width, 0)
             zombie.getsprite().y = randint(0, self.height - zombie.getsprite().height)
@@ -175,10 +175,12 @@ class Window(pyglet.window.Window):
 
         # This block is for messages like: 'The boss is incoming', 'Good work' etc..
         self.message_timeout = 0
-        self.message_text = pyglet.text.Label(bold=True, font_size=20, text="PAUSED", y=self.height / 2)
+        self.message_text = pyglet.text.Label(bold=True, font_size=15, text="PAUSED", y=self.height / 2)
 
         # Spawner is the sprite generator
         self.spawner = Spawner(self.zombies, self.height, self.width)
+
+        self.show_message("Let's kill some zombies shall we?", 5)
 
     # You need the dt argument there to prevent errors,
     # it does nothing as far as I know. Just a bit of counting up!
@@ -188,6 +190,7 @@ class Window(pyglet.window.Window):
             return  # Make sure the rest of the update doesn't get run
 
         self.lastshot += dt  # Only allow shooting every .x seconds
+        self.message_timeout -= dt
         marry = self.mymary.getsprite()  # A bit easier than calling self.mymarry.getsprite the whole time.
 
         self.move_marry(marry, dt)  # A bit of marry moving
@@ -214,18 +217,24 @@ class Window(pyglet.window.Window):
                         self.zombies.remove(z)  # Zombie has been killed let's remote it.
                         self.kills += 1  # Let's give the player a point!
                         self.spawner.killed(self.kills)  # Let the spawner know a zombie has been killed :)
+                        self.kill_message()  # Event messages to for example introduce new zombies
                     if b in self.bullets:  # Sometimes the bullet already has been removed so just a quick check
                         self.bullets.remove(b)  # Remove the bullet if it's still in the game.
         pass
 
+    def kill_message(self):
+        if self.kills is 10:
+            self.show_message("Sometimes zombies are slower but stronger", 4)
+
     def show_message(self, text, time):
         self.message_timeout = time
         self.message_text.text = text
-        self.message_text.x = self.width / 2 - self.paused_text.content_width / 2
+        self.message_text.x = self.width / 2 - self.message_text.content_width / 2
 
     def draw_message(self):
         if self.message_timeout < 0:
             return
+        self.message_text.draw()
 
     def move_marry(self, marry, dt):
         # Make sure that walking with an angle is the same speed. We're a retro game duhh
@@ -271,6 +280,9 @@ class Window(pyglet.window.Window):
         pyglet.clock.tick()  # Make sure you tick o'l the clock!
         self.clear()
         self.background.draw()
+
+        self.draw_message()
+
         self.mymary.draw()
         self.mymary.getsprite()
 
