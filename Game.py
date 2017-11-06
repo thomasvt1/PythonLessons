@@ -81,7 +81,7 @@ class Spawner:
                 self.next_giant = False
 
             self.zombies.insert(len(self.zombies), zombie)
-            if self.spawntime > 1:
+            if self.spawntime > .8:
                 self.spawntime -= .2
             self.lastspawn = 0
 
@@ -142,6 +142,7 @@ class Zombie:
 
         self.sprite.x = x
         self.sprite.y = y
+
 
         self.speed = speed
         self.lives = lives
@@ -243,6 +244,9 @@ class Window(pyglet.window.Window):
 
         for z in self.zombies:  # Loop trough all zombies
             z.update(dt)  # Make sure all zombies also move. Would be a bit boring otherwise?
+
+            if z.getsprite().x + z.getsprite().width < 0:  # If zombie reaches the border
+                self.reset()  # Then remove a life and reset level.
 
         for b in list(self.bullets):  # Loop trough all bullets
             if b.getx() > self.width:  # If the bullet is no longer inside the screen
