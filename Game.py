@@ -31,6 +31,9 @@ class Lives:
     def get_lives(self):
         return self.lives
 
+    def set_lives(self, lifes):
+        self.lives = lifes
+
     def is_dead(self):
         return self.lives < 1
 
@@ -81,7 +84,7 @@ class Spawner:
                 self.next_giant = False
 
             self.zombies.insert(len(self.zombies), zombie)
-            if self.spawntime > .8:
+            if self.spawntime > .7:
                 self.spawntime -= .2
             self.lastspawn = 0
 
@@ -168,6 +171,7 @@ class Mary:
         self.sprite = pyglet.sprite.Sprite(pyglet.image.load('resources/mary.png'))
         self.sprite.x = 150
         self.sprite.y = randint(0, height)
+        #self.sprite.rotation = 180
 
     def draw(self):
         self.sprite.draw()
@@ -224,13 +228,14 @@ class Window(pyglet.window.Window):
             return  # Make sure the rest of the update doesn't get run
 
         self.lastshot += dt  # Only allow shooting every .x seconds
-        self.message_timeout -= dt # Make sure we count down the seconds for the message.
+        self.message_timeout -= dt  # Make sure we count down the seconds for the message.
         marry = self.mymary.getsprite()  # A bit easier than calling self.mymarry.getsprite the whole time.
 
         self.move_marry(marry, dt)  # A bit of marry moving
         self.keep_marry_in_screen(marry)  # Make sure marry doesn't go missing.
 
-        self.spawner.update(dt)  # Let's tick the spawner
+        if self.lives.get_lives() > 0:  # Only spawn when not dead.
+            self.spawner.update(dt)  # Let's tick the spawner
 
         # WIP - Mary & Zombie colliding test
         for z in self.zombies:
@@ -348,6 +353,10 @@ class Window(pyglet.window.Window):
             dead.x = (self.width / 2) - (dead.content_width / 2)
             dead.draw()
 
+            restart = pyglet.text.Label(bold=True, font_size=10, text="Press R to restart", y=self.height / 2.5)
+            restart.x = (self.width / 2) - (restart.content_width / 2)
+            restart.draw()
+
         for b in self.bullets:
             b.draw()
         for z in self.zombies:
@@ -394,6 +403,9 @@ class Window(pyglet.window.Window):
 
         if symbol is key.H:
             self.lives.remove_live()
+
+        if symbol is key.R and self.lives.get_lives() == 0:
+            self.lives.set_lives(3)
 
         if symbol is key.P:
             self.paused = not self.paused
